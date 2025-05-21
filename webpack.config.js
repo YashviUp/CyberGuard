@@ -1,14 +1,18 @@
 const path = require('path');
-const CopyPlugin = require('copy-webpack-plugin');
 const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
+const TerserPlugin = require('terser-webpack-plugin');
 
 module.exports = {
-  entry: './src/background.js', // Change to your actual entry file
+  entry: {
+    background: './src/background.js',
+    content: './src/content.js',
+    popup: './src/popup.js',
+    dashboard: './src/dashboard.js'
+  },
   output: {
-    filename: 'background.js',
+    filename: '[name].js',
     path: path.resolve(__dirname, 'dist'),
-    library: 'CyberGuard', // Optional: attach to window/global
-    libraryTarget: 'umd',  // Optional: UMD for compatibility
+    clean: true
   },
   mode: 'production',
   module: {
@@ -19,7 +23,8 @@ module.exports = {
         use: {
           loader: 'babel-loader',
           options: {
-            presets: ['@babel/preset-env']
+            presets: ['@babel/preset-env'],
+            plugins: ['@babel/plugin-transform-runtime']
           }
         }
       }
@@ -30,9 +35,27 @@ module.exports = {
       chunks: 'all',
       minSize: 20000,
       maxSize: 250000,
-    }
+      cacheGroups: {
+        vendor: {
+          test: /[\\/]node_modules[\\/]/,
+          name: 'vendors',
+          chunks: 'all'
+        }
+      }
+    },
+    minimize: true,
+    minimizer: [
+      '...',
+      new TerserPlugin({
+        terserOptions: {
+          compress: {
+            drop_console: true
+          }
+        }
+      })
+    ]
   },
   performance: {
-    hints: false // Disable size warnings
+    hints: false
   }
 };

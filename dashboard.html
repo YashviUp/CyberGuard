@@ -8,9 +8,10 @@
 </head>
 <body>
   <div class="fullscreen-dashboard-container">
+    <!-- Unified Top Bar -->
     <div class="dashboard-header">
       <span class="dashboard-icon">
-        <img width="100" height="34" src="icons/logo.png" alt="Cyber Guard Logo" />
+        <img width="120" height="44" src="icons/logo.png" alt="Cyber Guard Logo" />
       </span>
       <span class="dashboard-title">Dashboard</span>
       <div id="parentModeToggle" class="parent-toggle">
@@ -21,20 +22,19 @@
         <label for="parentModeSwitch" class="parent-label">Parent Mode</label>
       </div>
     </div>
+    <!-- Dashboard Content -->
     <div class="dashboard-summary">
       <div class="summary-label">Total Time Spent Today</div>
       <div class="summary-value" id="totalTime">0h 0m 0s</div>
     </div>
     <div class="dashboard-sites">
       <div class="sites-label">Sites Visited Today</div>
+      <div id="sitesList" class="sites-list"></div>
       <div id="siteUsageList" class="usage-list"></div>
-    </div>
+    </div>    
     <a href="https://static.cybercrime.gov.in/Webform/Crime_OnlineSafetyTips.aspx"
        target="_blank"
-       style="display:inline-block;margin:16px auto 0 auto;padding:8px 14px;
-              background:linear-gradient(90deg,#3182ce 0%,#63b3ed 100%);
-              color:#fff;font-weight:700;border-radius:12px;
-              font-size:1em;text-decoration:none;box-shadow:0 2px 8px #3182ce33;">
+       class="online-safety-link">
       🛡️ Online Safety Tips
     </a>
     <!-- Parent Mode Modal & Section -->
@@ -54,7 +54,12 @@
       </div>
     </div>
     <div id="parentModeSection" class="parent-mode-font" style="display:none;"></div>
-  </div>
+    <div style="margin-top:32px;">
+      <canvas id="dailyChart" height="60"></canvas>
+      </div>
+      <div style="margin-top:24px;">
+      <canvas id="weeklyChart" height="60"></canvas>
+      </div>      
   <script src="dashboard.js"></script>
 </body>
 </html>
