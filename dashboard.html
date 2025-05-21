@@ -10,8 +10,16 @@
   <div class="fullscreen-dashboard-container">
     <div class="dashboard-header">
       <span class="dashboard-icon">
-        <img width="210" height="80" src="icons/logo.png" /></span>
-      <span class="dashboard-title"> Dashboard</span>
+        <img width="100" height="34" src="icons/logo.png" alt="Cyber Guard Logo" />
+      </span>
+      <span class="dashboard-title">Dashboard</span>
+      <div id="parentModeToggle" class="parent-toggle">
+        <label class="switch">
+          <input type="checkbox" id="parentModeSwitch" />
+          <span class="slider"></span>
+        </label>
+        <label for="parentModeSwitch" class="parent-label">Parent Mode</label>
+      </div>
     </div>
     <div class="dashboard-summary">
       <div class="summary-label">Total Time Spent Today</div>
@@ -19,17 +27,34 @@
     </div>
     <div class="dashboard-sites">
       <div class="sites-label">Sites Visited Today</div>
-      <div id="sitesList" class="sites-list"></div>
+      <div id="siteUsageList" class="usage-list"></div>
     </div>
-    <div id="socialMediaUsage" style="margin:20px 0;"></div>
-    <div id="siteUsageList" class="usage-list"></div>
+    <a href="https://static.cybercrime.gov.in/Webform/Crime_OnlineSafetyTips.aspx"
+       target="_blank"
+       style="display:inline-block;margin:16px auto 0 auto;padding:8px 14px;
+              background:linear-gradient(90deg,#3182ce 0%,#63b3ed 100%);
+              color:#fff;font-weight:700;border-radius:12px;
+              font-size:1em;text-decoration:none;box-shadow:0 2px 8px #3182ce33;">
+      🛡️ Online Safety Tips
+    </a>
+    <!-- Parent Mode Modal & Section -->
+    <div id="parentModeModal" class="modal" style="display:none;">
+      <div class="modal-content parent-mode-font">
+        <h2 style="margin-bottom:20px;color:#3182ce;">Parent Mode Verification</h2>
+        <form id="parentAuthForm">
+          <label>Email:<br>
+            <input type="email" id="parentEmail" required style="width:90%;margin-bottom:10px;" />
+          </label><br>
+          <label>OTP:<br>
+            <input type="text" id="parentOTP" maxlength="6" required style="width:90%;margin-bottom:16px;" />
+          </label><br>
+          <button type="submit" style="width:100%;padding:10px 0;margin-top:6px;font-size:1.1em;">Verify</button>
+        </form>
+        <div id="parentAuthMsg" class="modal-msg"></div>
+      </div>
+    </div>
+    <div id="parentModeSection" class="parent-mode-font" style="display:none;"></div>
   </div>
-  <div style="margin-top:32px;">
-    <canvas id="dailyChart" height="60"></canvas>
-  </div>
-  <div style="margin-top:24px;">
-    <canvas id="weeklyChart" height="60"></canvas>
-  </div>  
   <script src="dashboard.js"></script>
 </body>
 </html>

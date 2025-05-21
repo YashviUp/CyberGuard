@@ -1,11 +1,7 @@
-// background.js
-
 let countingActive = false;
 let timerId = null;
 const MAX_DAILY_TIME = 3 * 60 * 60 * 1000; // 3 hours in ms
-const EXTENSION_ID = chrome.runtime.id;
 
-// Utility: Check if a URL should be tracked
 function isTrackableUrl(url) {
   if (!url) return false;
   if (
@@ -13,22 +9,22 @@ function isTrackableUrl(url) {
     url.startsWith('chrome-extension://') ||
     url.startsWith('edge://') ||
     url.startsWith('about:') ||
-    url.includes(chrome.runtime.id) // your extension's own ID
+    url.includes(chrome.runtime.id)
   ) return false;
   return /^https?:\/\//.test(url);
 }
 
-
-// Initialize storage
+// Initialize storage on install
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.set({
     dailyUsage: 0,
     lastUsageDate: new Date().toDateString(),
     browsingHistory: {}
   });
+  chrome.alarms.create('usageIncrement', { periodInMinutes: 1 });
 });
 
-// Start tracking when browser starts
+// Start tracking and alarm on browser startup
 chrome.runtime.onStartup.addListener(() => {
   startCounting();
   chrome.alarms.create('usageIncrement', { periodInMinutes: 1 });
@@ -102,7 +98,7 @@ function stopCounting() {
 }
 
 // Daily reset logic
-const resetDailyUsageIfNeeded = async () => {
+async function resetDailyUsageIfNeeded() {
   const data = await chrome.storage.local.get(['lastUsageDate']);
   const today = new Date().toDateString();
 
@@ -113,12 +109,7 @@ const resetDailyUsageIfNeeded = async () => {
       browsingHistory: {}
     });
   }
-};
-
-// Alarm setup (already present in onStartup, but keep for safety)
-chrome.runtime.onStartup.addListener(() => {
-  chrome.alarms.create('usageIncrement', { periodInMinutes: 1 });
-});
+}
 
 // Alarm handler
 chrome.alarms.onAlarm.addListener(async (alarm) => {
@@ -206,7 +197,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-// Optionally, inject analyzePage only on trackable URLs
+// Optionally, inject analyzePage only on trackable URLs (if needed)
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status === 'complete' && isTrackableUrl(tab.url)) {
     chrome.scripting.executeScript({
@@ -214,6 +205,6 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
       func: () => {
         if (typeof analyzePage === 'function') analyzePage();
       }
-    });
+    }).catch(() => {});
   }
 });

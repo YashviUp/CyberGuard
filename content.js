@@ -1,5 +1,10 @@
 if (!window.cyberGuardContentScriptInjected) {
   window.cyberGuardContentScriptInjected = true;
+
+  const TRUSTED_DOMAINS = [
+    "linkedin.com", "google.com", "github.com", "wikipedia.org", "microsoft.com",
+    "facebook.com", "x.com", "instagram.com", "amazon.com", "apple.com"];
+  const SENSITIVE_FIELDS = ['password', 'credit', 'card', 'cvv', 'ssn', 'aadhaar', 'upi', 'atm', 'pin', 'debit', 'account', 'mobile', 'phone', 'address', 'userid'];
   const filter = new Filter();
   filter.addWords(
         // English Profanity
@@ -27,201 +32,200 @@ if (!window.cyberGuardContentScriptInjected) {
       "pu$$y", "d1ck", "c0ck", "c*nt", "tw@t", "w@nker", "w4nker", "n1gger", "n!gger", "b@stard", "s!ut", "s1ut",
       "wh0re", "wh@re", "s0n of a b!tch", "l@vda", "m@darchod", "b#enchod", "c#tiya", "r@ndi"
   );
-  
-  // Sensitive fields to warn about
-  const SENSITIVE_FIELDS = [
-    'password', 'credit', 'card', 'cvv', 'ssn', 'aadhaar', 'upi', 'atm',
-    'pin', 'debit', 'account', 'mobile', 'phone', 'address'
+
+function containsBadWords(text) {
+  if (!text) return false;
+  return filter.isProfane(text);
+}
+
+function containsSensitive(text) {
+  const lower = text.toLowerCase();
+  return SENSITIVE_FIELDS.some(field => lower.includes(field));
+}
+function isTrustedDomain(domain) {
+  const parts = domain.split('.').slice(-2).join('.');
+  return TRUSTED_DOMAINS.includes(parts);
+}
+
+function showSiteSuggestionPopup(message) {
+  if (document.getElementById('cyberguard-suggestion-popup')) return;
+  const popup = document.createElement('div');
+  popup.id = 'cyberguard-suggestion-popup';
+  popup.textContent = message;
+  Object.assign(popup.style, {
+    position: 'fixed',
+    bottom: '20px',
+    right: '20px',
+    background: 'rgba(74,144,226,0.95)',
+    color: 'white',
+    padding: '12px 22px',
+    borderRadius: '14px',
+    fontFamily: 'Inter, Arial, sans-serif',
+    fontSize: '15px',
+    boxShadow: '0 4px 16px rgba(0,0,0,0.13)',
+    zIndex: 2147483647,
+    opacity: '0',
+    transition: 'opacity 0.3s'
+  });
+  document.body.appendChild(popup);
+  setTimeout(() => popup.style.opacity = '1', 10);
+  setTimeout(() => {
+    popup.style.opacity = '0';
+    setTimeout(() => popup.remove(), 300);
+  }, 5000);
+}
+
+function showBigPopup(message) {
+  if (document.getElementById('cyberguard-big-popup')) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'cyberguard-big-popup';
+  Object.assign(overlay.style, {
+    position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+    background: 'rgba(255, 255, 255, 0.3)', backdropFilter: 'blur(8px)',
+    zIndex: 2147483647, display: 'flex', justifyContent: 'center', alignItems: 'center'
+  });
+
+  const card = document.createElement('div');
+  Object.assign(card.style, {
+    background: 'white', borderRadius: '18px', padding: '40px', textAlign: 'center',
+    maxWidth: '400px', boxShadow: '0 8px 32px rgba(0,0,0,0.2)', fontFamily: 'sans-serif'
+  });
+
+  card.innerHTML = `
+    <h2 style="color:#e63946;">⚠️ Cyber Guard Alert</h2>
+    <p style="font-size:16px;">${message}</p>
+    <button style="margin-top:20px;padding:10px 20px;font-weight:bold;
+    background:#4a90e2;color:white;border:none;border-radius:8px;cursor:pointer;">OK</button>
+  `;
+  card.querySelector('button').onclick = () => overlay.remove();
+  overlay.appendChild(card);
+  document.body.appendChild(overlay);
+}
+
+// --- Model ---
+let weightsBuffer = null;
+const INPUT_SIZE = 30, D1 = 100, D2 = 100, OUT = 1;
+const sigmoid = x => 1 / (1 + Math.exp(-x));
+function dense(input, weights, bias, outSize, activation) {
+  const output = Array(outSize).fill(0);
+  for (let i = 0; i < outSize; i++) {
+    let sum = bias[i];
+    for (let j = 0; j < input.length; j++) {
+      sum += input[j] * weights[j * outSize + i];
+    }
+    output[i] = activation(sum);
+  }
+  return output;
+}
+async function loadWeights() {
+  if (weightsBuffer) return weightsBuffer;
+  const res = await fetch(chrome.runtime.getURL('phishing-model.weights.bin'));
+  if (!res.ok) throw new Error("Failed to fetch phishing-model.weights.bin");
+  const buf = await res.arrayBuffer();
+  weightsBuffer = new Float32Array(buf);
+  return weightsBuffer;
+}
+async function phishingModelPredict(input) {
+  const weights = await loadWeights();
+  let offset = 0;
+  const w1 = weights.slice(offset, offset + INPUT_SIZE * D1); offset += INPUT_SIZE * D1;
+  const b1 = weights.slice(offset, offset + D1); offset += D1;
+  const w2 = weights.slice(offset, offset + D1 * D2); offset += D1 * D2;
+  const b2 = weights.slice(offset, offset + D2); offset += D2;
+  const w3 = weights.slice(offset, offset + D2 * OUT); offset += D2 * OUT;
+  const b3 = weights.slice(offset, offset + OUT);
+  const h1 = dense(input, w1, b1, D1, sigmoid);
+  const h2 = dense(h1, w2, b2, D2, sigmoid);
+  const out = dense(h2, w3, b3, OUT, sigmoid);
+  return out[0];
+}
+
+// --- Feature Extraction ---
+function extractPhishingFeatures(url, doc) {
+  const domain = new URL(url).hostname;
+  const count = (str, ch) => (str.match(new RegExp(`\\${ch}`, 'g')) || []).length;
+  const anchors = Array.from(doc.querySelectorAll('a'));
+  return [
+    url.length, count(url, '.'), count(url, '/'), count(url, '@'), count(url, '?'),
+    count(url, '-'), count(url, '='), count(url, '_'), count(url, '&'), count(url, '%'),
+    count(url, '#'), count(url, '$'), count(url, '!'), count(url, '*'), count(url, ','),
+    count(url, ';'), count(url, ':'), count(url, '+'), count(url, '~'),
+    (url.match(/[a-z]/g) || []).length,
+    (url.match(/[0-9]/g) || []).length,
+    (url.match(/[^a-zA-Z0-9]/g) || []).length,
+    url.includes('@') ? 1 : 0,
+    domain.includes('-') ? 1 : 0,
+    url.startsWith('https://') ? 1 : 0,
+    Math.max(domain.split('.').length - 2, 0),
+    anchors.length,
+    anchors.filter(a => { try { return new URL(a.href).hostname !== domain; } catch { return false; } }).length,
+    doc.querySelectorAll('form').length,
+    doc.querySelectorAll('iframe').length > 0 ? 1 : 0
   ];
-  
-  // Helper functions
-  function containsBadWords(text) {
-    if (!text) return false;
-    return filter.isProfane(text);
-  }
-  function containsSensitive(text) {
-    if (!text) return false;
-    const lower = text.toLowerCase();
-    return SENSITIVE_FIELDS.some(field => lower.includes(field));
-  }
-  // ===================
-  // 2. Phishing Detection
-  // ===================
-  const PHISHING_THRESHOLD = 0.98;
+}
 
-  function extractPhishingFeatures(url, doc) {
-    const getDomain = (url) => {
-      try { return new URL(url).hostname; } catch { return ''; }
-    };
-    const countOccurrences = (str, char) =>
-      (str.match(new RegExp(`\\${char}`, 'g')) || []).length;
-
-    const features = [
-      url.length,
-      countOccurrences(url, '.'),
-      countOccurrences(url, '/'),
-      countOccurrences(url, '@'),
-      countOccurrences(url, '?'),
-      countOccurrences(url, '-'),
-      countOccurrences(url, '='),
-      countOccurrences(url, '_'),
-      countOccurrences(url, '&'),
-      countOccurrences(url, '%'),
-      countOccurrences(url, '#'),
-      countOccurrences(url, '$'),
-      countOccurrences(url, '!'),
-      countOccurrences(url, '*'),
-      countOccurrences(url, ','),
-      countOccurrences(url, ';'),
-      countOccurrences(url, ':'),
-      countOccurrences(url, '+'),
-      countOccurrences(url, '~'),
-      (url.match(/[a-z]/g) || []).length,
-      (url.match(/[0-9]/g) || []).length,
-      (url.match(/[^a-zA-Z0-9]/g) || []).length,
-      url.includes('@') ? 1 : 0,
-      getDomain(url).includes('-') ? 1 : 0,
-      url.startsWith('https://') ? 1 : 0,
-      Math.max(getDomain(url).split('.').length - 2, 0),
-      doc.querySelectorAll('a').length,
-      Array.from(doc.querySelectorAll('a')).filter(a => {
-        try {
-          return new URL(a.href).hostname !== getDomain(url);
-        } catch { return false; }
-      }).length,
-      doc.querySelectorAll('form').length,
-      doc.querySelectorAll('iframe').length > 0 ? 1 : 0
-    ];
-    return features;
+// --- Main Analyze Logic ---
+async function analyzePage() {
+  const input = extractPhishingFeatures(window.location.href, document);
+  const score = await phishingModelPredict(input);
+  const domain = new URL(window.location.href).hostname;
+  if (!isTrustedDomain(domain) && score > 0.995) {
+    showBigPopup(`⚠️ Phishing risk detected: ${(score * 100).toFixed(1)}%`);
   }
+}
 
-  function phishingScore(features) {
-    const weights = [
-      0.03, 0.02, 0.02, 0.03, 0.02, 0.02, 0.01, 0.01, 0.01, 0.01,
-      0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
-      0.02, 0.02, 0.05, 0.04, 0.05, 0.04, 0.03, 0.03, 0.03, 0.03
-    ];
-    let score = 0;
-    for (let i = 0; i < features.length; ++i) {
-      score += features[i] * weights[i];
+document.addEventListener('DOMContentLoaded', () => {
+  showSiteSuggestionPopup("Cyber Guard active: Avoid sharing sensitive info.");
+  analyzePage();
+});
+
+let inputTimeout;
+document.addEventListener('input', (event) => {
+  clearTimeout(inputTimeout);
+  inputTimeout = setTimeout(() => {
+    const t = event.target;
+    if (!t || (!t.value && !t.textContent)) return;
+    const value = t.value || t.textContent;
+    const label = t.name || t.type || t.placeholder || '';
+    if (containsSensitive(label)) showSiteSuggestionPopup('Sensitive input field detected.');
+    if (containsBadWords(value)) {
+      showBigPopup('⚠️ Offensive language detected.');
+      t.focus();
     }
-    return Math.min(score / 5, 1);
+  }, 400);
+}, true);
+
+document.addEventListener('focusin', (event) => {
+  const el = event.target;
+  if (el.tagName === 'INPUT' && el.type === 'password') {
+    showSiteSuggestionPopup('Use a strong, unique password.');
   }
+});
 
-  // ===================
-  // 3. UI Popups
-  // ===================
-  function showSiteSuggestionPopup(message) {
-    if (document.getElementById('cyberguard-suggestion-popup')) return;
-    const popup = document.createElement('div');
-    popup.id = 'cyberguard-suggestion-popup';
-    popup.textContent = message;
-    Object.assign(popup.style, {
-      position: 'fixed',
-      bottom: '20px',
-      right: '20px',
-      background: 'rgba(74,144,226,0.95)',
-      color: 'white',
-      padding: '12px 22px',
-      borderRadius: '14px',
-      fontFamily: 'Inter, Arial, sans-serif',
-      fontSize: '15px',
-      boxShadow: '0 4px 16px rgba(0,0,0,0.13)',
-      zIndex: 2147483647,
-      opacity: '0',
-      transition: 'opacity 0.3s'
-    });
-    document.body.appendChild(popup);
-    setTimeout(() => popup.style.opacity = '1', 10);
-    setTimeout(() => {
-      popup.style.opacity = '0';
-      setTimeout(() => popup.remove(), 300);
-    }, 5000);
-  }
-
-  function showBigPopup(message) {
-    if (document.getElementById('cyberguard-big-popup')) return;
-    const overlay = document.createElement('div');
-    overlay.id = 'cyberguard-big-popup';
-    Object.assign(overlay.style, {
-      position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-      background: 'rgba(255, 255, 255, 0.3)', backdropFilter: 'blur(8px)',
-      zIndex: 2147483647, display: 'flex', justifyContent: 'center', alignItems: 'center'
-    });
-
-    const card = document.createElement('div');
-    Object.assign(card.style, {
-      background: 'white', borderRadius: '18px', padding: '40px', textAlign: 'center',
-      maxWidth: '400px', boxShadow: '0 8px 32px rgba(0,0,0,0.2)', fontFamily: 'sans-serif'
-    });
-
-    card.innerHTML = `
-      <h2 style="color:#e63946;">⚠️ Cyber Guard Alert</h2>
-      <p style="font-size:16px;">${message}</p>
-      <button style="margin-top:20px;padding:10px 20px;font-weight:bold;
-      background:#4a90e2;color:white;border:none;border-radius:8px;cursor:pointer;">OK</button>
-    `;
-    card.querySelector('button').onclick = () => overlay.remove();
-    overlay.appendChild(card);
-    document.body.appendChild(overlay);
-  }
-
-  // ===================
-  // 4. Main Logic (Single Event Listeners)
-  // ===================
-  function analyzePage() {
-    const features = extractPhishingFeatures(window.location.href, document);
-    const score = phishingScore(features);
-    if (score > PHISHING_THRESHOLD) {
-      showBigPopup(`⚠️ Warning: High phishing risk detected (${(score * 100).toFixed(1)}%)`);
-    }
-  }
-
-  // Only one DOMContentLoaded listener
-  document.addEventListener('DOMContentLoaded', () => {
-    showSiteSuggestionPopup("Cyber Guard: Don't share sensitive info on suspicious sites.");
-    analyzePage();
-  });
-
-  // Only one input event listener
-  document.addEventListener('input', (event) => {
-    const target = event.target;
-    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
-      const value = target.value || target.textContent || '';
-      const name = target.name || target.type || target.placeholder || '';
-      if (containsSensitive(name)) {
-        showSiteSuggestionPopup('Be careful! Sensitive field detected.');
-      }
-      if (containsBadWords(value)) {
-        showBigPopup('⚠️ Abusive or offensive language detected. Please revise your input.');
-        target.focus();
-      }
-    }
-  }, true);
-
-  // Only one password field focusin listener
-  document.addEventListener('focusin', (event) => {
-    const el = event.target;
-    if (el.tagName === 'INPUT' && el.type === 'password') {
-      showSiteSuggestionPopup('Use a strong, unique password. Stay safe!');
-    }
-  });
-
-  // Only one message listener
-  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-    if (msg.action === 'analyze_page') {
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.action === 'analyze_page') {
+    (async () => {
       try {
         const features = extractPhishingFeatures(window.location.href, document);
-        const score = phishingScore(features);
-        if (score > PHISHING_THRESHOLD) {
-          showBigPopup(`⚠️ Warning: High phishing risk detected (${(score * 100).toFixed(1)}%)`);
+        if (!features || features.length !== 30) {
+          sendResponse({ error: 'Feature extraction failed or incomplete!' });
+          return;
+        }
+        const score = await phishingModelPredict(features);
+        const domain = new URL(window.location.href).hostname;
+        if (!isTrustedDomain(domain) && score > 0.98) {
+          showBigPopup(`⚠️ Phishing risk detected: ${(score * 100).toFixed(1)}%`);
         }
         sendResponse({ score });
       } catch (e) {
         sendResponse({ error: 'Feature extraction failed', details: e.message });
       }
-      return true;
-    }
-  });
-
+    })();
+    return true;
+  }
+});
 }
+
+chrome.runtime.sendMessage({ action: 'analyze_page' }, response => {
+  console.log(response);
+});

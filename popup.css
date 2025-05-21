@@ -155,3 +155,10 @@ body {
   position: absolute;
   left: 0; top: 0;
 }
+.header img { width: 36px; height: 36px; }
+.header h1 { font-size: 1.5em; margin: 0; color: #357ABD; }
+.motivation { color: #3182ce; margin: 8px 0 14px 0; font-size: 1.08em; }
+.timer { font-weight: bold; margin-bottom: 8px; }
+.open-dashboard-btn { margin: 4px 0; padding: 8px 18px; border-radius: 8px; border: none; background: #357ABD; color: #fff; font-weight: 600; cursor: pointer; }
+#testPhishingBtn { background: #e53e3e; }
+#phishingResult { margin-top: 10px; font-weight: 600; color: #e53e3e; }

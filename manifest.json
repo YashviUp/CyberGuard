@@ -28,18 +28,21 @@
     }
   },
   "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["dist/bad-words.bundle.js", "content.js"], 
-      "run_at": "document_idle"
-    }
-  ],
+  {
+    "matches": ["http://*/*", "https://*/*"],
+    "js": ["dist/bad-words.bundle.js", "content.js"],
+    "run_at": "document_idle"
+  }
+],
   "web_accessible_resources": [
     {
       "resources": [
+        "phishing-weights.json",
+        "phishing-model.weights.bin",
         "dashboard.html",
         "dashboard.js",
         "dashboard.css",
+        "content.js",
         "dist/*"],
       "matches": ["<all_urls>"]
     }
