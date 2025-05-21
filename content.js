@@ -4,7 +4,6 @@ if (!window.cyberGuardContentScriptInjected) {
   const TRUSTED_DOMAINS = [
     "linkedin.com", "google.com", "github.com", "wikipedia.org", "microsoft.com",
     "facebook.com", "x.com", "instagram.com", "amazon.com", "apple.com"];
-  const SENSITIVE_FIELDS = ['password', 'credit', 'card', 'cvv', 'ssn', 'aadhaar', 'upi', 'atm', 'pin', 'debit', 'account', 'mobile', 'phone', 'address', 'userid'];
   const filter = new Filter();
   filter.addWords(
         // English Profanity
@@ -32,6 +31,23 @@ if (!window.cyberGuardContentScriptInjected) {
       "pu$$y", "d1ck", "c0ck", "c*nt", "tw@t", "w@nker", "w4nker", "n1gger", "n!gger", "b@stard", "s!ut", "s1ut",
       "wh0re", "wh@re", "s0n of a b!tch", "l@vda", "m@darchod", "b#enchod", "c#tiya", "r@ndi"
   );
+  const BANK_DOMAINS = [
+    "hdfcbank.com", "icicibank.com", "axisbank.com", "sbi.co.in", "kotak.com",
+    "yesbank.in", "indusind.com", "bb.com.br", "bancobrasil.com.br", "bankofamerica.com",
+    "chase.com", "wellsfargo.com", "citibank.com", "capitalone.com", "paypal.com",
+    "paytm.com", "phonepe.com", "gpay.com", "razorpay.com", "stripe.com", "payu.in",
+    "billdesk.com", "pay.google.com", "secure.payu.in", "securegw.paytm.in"
+  ];
+  const SHOPPING_DOMAINS = [
+    "amazon.in", "amazon.com", "flipkart.com", "myntra.com", "snapdeal.com", "ebay.com",
+    "walmart.com", "aliexpress.com", "shopify.com"
+  ];
+
+  // --- Sensitive field names ---
+  const SENSITIVE_FIELDS = [
+    'password', 'credit', 'card', 'cvv', 'ssn', 'aadhaar', 'upi', 'atm', 'pin', 'debit',
+    'account', 'mobile', 'phone', 'address', 'userid'
+  ];
 
 function containsBadWords(text) {
   if (!text) return false;
@@ -45,6 +61,14 @@ function containsSensitive(text) {
 function isTrustedDomain(domain) {
   const parts = domain.split('.').slice(-2).join('.');
   return TRUSTED_DOMAINS.includes(parts);
+}
+function isBankDomain(domain) {
+  return BANK_DOMAINS.some(bank => domain.endsWith(bank));
+}
+function isShoppingOrPaymentDomain(domain) {
+  return SHOPPING_DOMAINS.some(shop => domain.endsWith(shop)) ||
+         BANK_DOMAINS.some(bank => domain.endsWith(bank)) ||
+         /pay|payment|secure|checkout|wallet|gateway/i.test(domain);
 }
 
 function showSiteSuggestionPopup(message) {
@@ -84,13 +108,11 @@ function showBigPopup(message) {
     background: 'rgba(255, 255, 255, 0.3)', backdropFilter: 'blur(8px)',
     zIndex: 2147483647, display: 'flex', justifyContent: 'center', alignItems: 'center'
   });
-
   const card = document.createElement('div');
   Object.assign(card.style, {
     background: 'white', borderRadius: '18px', padding: '40px', textAlign: 'center',
     maxWidth: '400px', boxShadow: '0 8px 32px rgba(0,0,0,0.2)', fontFamily: 'sans-serif'
   });
-
   card.innerHTML = `
     <h2 style="color:#e63946;">⚠️ Cyber Guard Alert</h2>
     <p style="font-size:16px;">${message}</p>
@@ -166,9 +188,30 @@ function extractPhishingFeatures(url, doc) {
 
 // --- Main Analyze Logic ---
 async function analyzePage() {
-  const input = extractPhishingFeatures(window.location.href, document);
+  const url = window.location.href;
+  const domain = new URL(url).hostname;
+
+  // 1. Bank login/payment gateway/shopping detection
+  if (isBankDomain(domain)) {
+    showBigPopup("⚠️ You are on a bank login or payment page. Double check the URL and never share your OTP, password, or PIN.");
+  } else if (isShoppingOrPaymentDomain(domain)) {
+    // Look for forms with sensitive fields
+    const forms = Array.from(document.querySelectorAll('form'));
+    for (const form of forms) {
+      const inputs = Array.from(form.querySelectorAll('input'));
+      for (const input of inputs) {
+        const name = input.name || input.id || input.placeholder || '';
+        if (containsSensitive(name)) {
+          showBigPopup("⚠️ Sensitive payment field detected! Use only trusted payment gateways and never share card details with unknown sites.");
+          break;
+        }
+      }
+    }
+  }
+
+  // 2. Phishing detection as before
+  const input = extractPhishingFeatures(url, document);
   const score = await phishingModelPredict(input);
-  const domain = new URL(window.location.href).hostname;
   if (!isTrustedDomain(domain) && score > 0.995) {
     showBigPopup(`⚠️ Phishing risk detected: ${(score * 100).toFixed(1)}%`);
   }
@@ -206,13 +249,31 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.action === 'analyze_page') {
     (async () => {
       try {
-        const features = extractPhishingFeatures(window.location.href, document);
+        const url = window.location.href;
+        const domain = new URL(url).hostname;
+        // Alert on bank/payment/shopping as above
+        if (isBankDomain(domain)) {
+          showBigPopup("⚠️ You are on a bank login or payment page. Double check the URL and never share your OTP, password, or PIN.");
+        } else if (isShoppingOrPaymentDomain(domain)) {
+          const forms = Array.from(document.querySelectorAll('form'));
+          for (const form of forms) {
+            const inputs = Array.from(form.querySelectorAll('input'));
+            for (const input of inputs) {
+              const name = input.name || input.id || input.placeholder || '';
+              if (containsSensitive(name)) {
+                showBigPopup("⚠️ Sensitive payment field detected! Use only trusted payment gateways and never share card details with unknown sites.");
+                break;
+              }
+            }
+          }
+        }
+        // Phishing detection
+        const features = extractPhishingFeatures(url, document);
         if (!features || features.length !== 30) {
           sendResponse({ error: 'Feature extraction failed or incomplete!' });
           return;
         }
         const score = await phishingModelPredict(features);
-        const domain = new URL(window.location.href).hostname;
         if (!isTrustedDomain(domain) && score > 0.98) {
           showBigPopup(`⚠️ Phishing risk detected: ${(score * 100).toFixed(1)}%`);
         }
@@ -225,7 +286,3 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 });
 }
-
-chrome.runtime.sendMessage({ action: 'analyze_page' }, response => {
-  console.log(response);
-});
