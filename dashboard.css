@@ -1,0 +1,149 @@
+body, html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+  background: #f5f7fa;
+  overflow-x: hidden;
+}
+
+.fullscreen-dashboard-container {
+  min-height: 100vh;
+  width: 100vw;
+  background: #fff;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 40px 0 40px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  justify-content: center;
+  width: 100%;
+}
+
+.dashboard-icon {
+  font-size: 2.5rem;
+  display: flex;
+  align-items: center;
+}
+
+.dashboard-title {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #4a90e2;
+  letter-spacing: 0.5px;
+  flex-grow: 1;
+}
+
+.dashboard-summary {
+  background: linear-gradient(90deg, #4a90e2 0%, #50e3c2 100%);
+  color: #fff;
+  border-radius: 18px;
+  padding: 32px 50px;
+  box-shadow: 0 4px 12px rgba(74,144,226,0.12);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 2rem;
+  font-weight: 700;
+  margin-top: 20px;
+}
+
+.summary-label {
+  font-size: 1.3rem;
+  opacity: 0.9;
+  margin-bottom: 10px;
+}
+
+.dashboard-sites {
+  background: #f5f7fa;
+  border-radius: 18px;
+  padding: 30px 50px;
+  box-shadow: 0 2px 8px rgba(74,144,226,0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-height: 50vh;
+  overflow-y: auto;
+  width: 60vw;
+  min-width: 340px;
+}
+
+.sites-label {
+  font-weight: 600;
+  color: #357ABD;
+  font-size: 1.4rem;
+  margin-bottom: 14px;
+}
+
+.sites-list > div {
+  display: flex;
+  justify-content: space-between;
+  font-size: 1.2rem;
+  color: #333;
+  padding: 8px 0;
+  border-bottom: 1px solid #e7eaf3;
+}
+
+.sites-list > div:last-child {
+  border-bottom: none;
+}
+
+.usage-list {
+  margin-top: 16px;
+}
+.usage-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 18px;
+  gap: 12px;
+}
+.usage-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: #222;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.usage-details {
+  flex: 1;
+}
+.usage-title {
+  font-weight: 600;
+  color: #e2e8f0;
+  font-size: 1.1em;
+}
+.usage-bar-bg {
+  background: #23272f;
+  border-radius: 6px;
+  height: 8px;
+  margin: 6px 0 0 0;
+  width: 100%;
+  position: relative;
+}
+.usage-bar {
+  height: 8px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #63b3ed 0%, #3182ce 100%);
+  position: absolute;
+  left: 0; top: 0;
+}
+.usage-time {
+  color: #a0aec0;
+  font-size: 0.98em;
+  margin-left: 8px;
+  min-width: 80px;
+  text-align: right;
+}
