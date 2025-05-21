@@ -30,14 +30,11 @@ chrome.runtime.onStartup.addListener(() => {
   chrome.alarms.create('usageIncrement', { periodInMinutes: 1 });
 });
 
-// Track active tab changes
+// Track active tab changes and window focus changes
 chrome.tabs.onActivated.addListener(() => {
-  if (!countingActive) {
-    startCounting();
-  }
+  startCounting();
 });
 
-// Track window focus changes
 chrome.windows.onFocusChanged.addListener((windowId) => {
   if (windowId === chrome.windows.WINDOW_ID_NONE) {
     stopCounting();

@@ -42,12 +42,21 @@ function renderSiteUsage(browsingHistory) {
     const percent = Math.min(100, Math.round((ms / max) * 100));
     html += `
       <div class="usage-row">
+        <div class="usage-icon">
+          <img src="${getIconForDomain(site)}" width="34" height="34" class="usage-img" data-site="${site}" />
+        </div>
         <div class="usage-details">
-          <div class="usage-title">${site} ${msToHms(ms)}</div>
+          <div class="usage-title">${site}</div>
+          <div class="usage-bar-bg">
+            <div class="usage-bar" style="width:${percent}%;background:${percent>=100?'#e53e3e':'linear-gradient(90deg,#63b3ed 0%,#3182ce 100%)'}"></div>
+          </div>
+        </div>
+        <div class="usage-time">${msToHms(ms)}</div>
       </div>
     `;
   }
   list.innerHTML = html;
+  fallbackIcons();
 }
 
 function updateTime() {

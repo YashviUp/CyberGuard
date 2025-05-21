@@ -1,4 +1,4 @@
-﻿# CyberGuard Chrome Extension
+# CyberGuard Chrome Extension
 Made By CyberGuard Team for Compassion-A-Thon 2.0:
 [Tatiparthi Raghavendra Reddy](23f2002940@ds.study.iitm.ac.in)
 [Yashvi Upadhyay](24f2007780@ds.study.iitm.ac.in)
@@ -13,6 +13,7 @@ Made By CyberGuard Team for Compassion-A-Thon 2.0:
 
 [Compassion-A-thon 2.0 slides](https://docs.google.com/presentation/d/17qy9XTDllV1emOcEeT_hT0rKvmnm8gRefFuDwI8hClE/edit?usp=sharing)
 [Features Roadmap](https://docs.google.com/document/d/1-DmBus_-4BKtybs03VGKvMj0MCYGvAUoUQqLw9GVIdk/edit?usp=sharing)
+
 ## Project Structure
 
 ```
@@ -44,6 +45,31 @@ CYBERGUARD/
 ├── webpack.config.js              Webpack configuration bundles tensorflow bad-words chart.js
 ```
 
+### Changes Made During Optimization
+
+1. `background.js`
+   - Refactored `startCounting` and `stopCounting` functions to reduce redundancy.
+   - Optimized `chrome.tabs.onActivated` and `chrome.windows.onFocusChanged` event listeners.
+   - Removed redundant code in `chrome.alarms.onAlarm.addListener`.
+
+2. `content.js`
+   - Used a more efficient data structure for bad words and sensitive fields.
+   - Optimized `showBigPopup` and `showSiteSuggestionPopup` functions.
+   - Refactored `analyzePage` function to improve performance.
+
+3. `dashboard.js` and `popup.js`
+   - Refactored `renderSiteUsage` function to be shared between both files, reducing code duplication.
+   - Optimized `updateDashboard` and `updateTime` functions.
+
+4. `manifest.json`
+   - Reviewed and minimized permissions to include only necessary ones.
+   - Updated `web_accessible_resources` to include only necessary files.
+
+5. `webpack.config.js`
+   - Removed unnecessary plugins and configurations to optimize the build process.
+
+6. `README.md`
+   - Updated to reflect the changes made during optimization.
 
 - Make sure all local scripts (like Chart.js) are listed in `manifest.json` under `web_accessible_resources`.
 - Never load remote scripts or use inline event handlers due to Chrome Extension CSP.

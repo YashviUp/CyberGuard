@@ -1,6 +1,4 @@
 const path = require('path');
-const CopyPlugin = require('copy-webpack-plugin');
-const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 
 module.exports = {
   entry: './src/background.js', // Change to your actual entry file

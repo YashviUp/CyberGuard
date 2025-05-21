@@ -11,7 +11,6 @@ function isTrackableUrl(url) {
     url.startsWith('chrome://') ||
     url.startsWith('chrome-extension://') ||
     url.startsWith('edge://') ||
-    url.startsWith('about:') ||
     url.includes(chrome.runtime.id)
   ) return false;
   return /^https?:\/\//.test(url);

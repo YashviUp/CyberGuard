@@ -6,10 +6,7 @@
   "permissions": [
     "storage",
     "tabs",
-    "alarms",
-    "notifications",
-    "scripting",
-    "activeTab"
+    "alarms"
   ],
   "host_permissions": [
     "http://*/*",
@@ -37,13 +34,12 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "phishing-weights.json",
-        "phishing-model.weights.bin",
         "dashboard.html",
         "dashboard.js",
         "dashboard.css",
-        "content.js",
-        "dist/*"],
+        "dist/bad-words.bundle.js",
+        "dist/chart.umd.js"
+      ],
       "matches": ["<all_urls>"]
     }
   ],
